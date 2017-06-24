@@ -2,9 +2,6 @@ package com.github.quadflask.smartcrop;
 
 import java.awt.image.BufferedImage;
 
-/**
- * Created by flask on 2015. 10. 30..
- */
 public class Options {
 	public static final Options DEFAULT = new Options();
 
