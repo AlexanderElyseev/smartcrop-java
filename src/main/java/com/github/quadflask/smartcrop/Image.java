@@ -1,46 +1,52 @@
 package com.github.quadflask.smartcrop;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
 
-class Image {
+public class Image {
     private final int width, height;
-    private final int[] data;
+    private final int[] sourceRgb;
+    private final int[] scoreRgb;
+    private final int[] sourceCie;
+    private final BufferedImage bufferedImage;
     private final Options options;
-    private BufferedImage output;
-    private Image scoreImage;
-    private int[] cd;
 
-    Image(BufferedImage bufferedImage, Options options) {
-        this.width = bufferedImage.getWidth();
-        this.height = bufferedImage.getHeight();
-
-        this.data = bufferedImage.getRGB(0, 0, width, height, null, 0, width);
+    public Image(BufferedImage source, Options options) {
+        this.width = source.getWidth();
+        this.height = source.getHeight();
+        this.bufferedImage = source;
         this.options = options;
 
-        scoreImage = new Image(this.width, this.height, options);
+        this.sourceRgb = source.getRGB(0, 0, width, height, null, 0, width);
+        this.scoreRgb = new int[this.sourceRgb.length];
+        System.arraycopy(this.sourceRgb, 0, this.scoreRgb, 0, this.sourceRgb.length);
 
+        this.sourceCie = new int[this.sourceRgb.length];
         prepareCie();
-        edgeDetect(scoreImage);
-        skinDetect(scoreImage);
-        saturationDetect(scoreImage);
 
-
-        output = new BufferedImage(this.width, this.height, options.getBufferedBitmapType());
-        output.setRGB(0, 0, this.width, this.height, scoreImage.data, 0, this.width);
-
+        edgeDetect();
+        skinDetect();
+        saturationDetect();
     }
 
-    Image(int width, int height, Options options) {
-        this.width = width;
-        this.height = height;
-        this.options = options;
+    public BufferedImage getCroppedImage(Crop crop) {
+        int tw = options.getCropWidth();
+        int th = options.getCropHeight();
 
-        this.data = new int[width * height];
-        for (int i = 0; i < this.data.length; i++)
-            data[i] = 0xff000000;
+        BufferedImage image = new BufferedImage(tw, th, options.getBufferedBitmapType());
+        image.getGraphics().drawImage(bufferedImage, 0, 0, tw, th, crop.x, crop.y, crop.x + crop.width, crop.y + crop.height, null);
+        return image;
     }
 
-    public BufferedImage getScoreImage() {
+    public BufferedImage getScoreImage(Crop crop) {
+        BufferedImage output = new BufferedImage(this.width, this.height, options.getBufferedBitmapType());
+        output.setRGB(0, 0, this.width, this.height, scoreRgb, 0, this.width);
+
+        // Draw cropped frame
+        Graphics graphics = output.getGraphics();
+        graphics.setColor(Color.cyan);
+        graphics.drawRect(crop.x, crop.y, crop.width, crop.height);
+
         return output;
     }
 
@@ -53,72 +59,58 @@ class Image {
     }
 
     private void prepareCie() {
-        int[] id = data;
-        cd = new int[id.length];
-        int w = width;
-        int h = height;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int p = y * width + x;
+                int v = sourceRgb[p];
 
-        int p;
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                p = y * w + x;
-                cd[p] = cie(id[p]);
+                int r = v >> 16 & 0xff;
+                int g = v >> 8 & 0xff;
+                int b = v & 0xff;
+                int cie = Math.min(0xff, (int) (0.2126f * b + 0.7152f * g + 0.0722f * r + .5f));
+
+                sourceCie[p] = cie;
             }
         }
     }
 
-    private int cie(int rgb) {
-        int r = rgb >> 16 & 0xff;
-        int g = rgb >> 8 & 0xff;
-        int b = rgb & 0xff;
-        return Math.min(0xff, (int) (0.2126f * b + 0.7152f * g + 0.0722f * r + .5f));
-    }
-
-    private void edgeDetect(Image o) {
-        int[] od = o.data;
-        int w = width;
-        int h = height;
-        int p;
-        int lightness;
-
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                p = y * w + x;
-                if (x == 0 || x >= w - 1 || y == 0 || y >= h - 1) {
+    private void edgeDetect() {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int p = y * width + x;
+                int lightness;
+                if (x == 0 || x >= width - 1 || y == 0 || y >= height - 1) {
                     lightness = 0;
                 } else {
-                    lightness = cd[p] * 8
-                        - cd[p - w - 1]
-                        - cd[p - w]
-                        - cd[p - w + 1]
-                        - cd[p - 1]
-                        - cd[p + 1]
-                        - cd[p + w - 1]
-                        - cd[p + w]
-                        - cd[p + w + 1]
+                    lightness = sourceCie[p] * 8
+                        - sourceCie[p - width - 1]
+                        - sourceCie[p - width]
+                        - sourceCie[p - width + 1]
+                        - sourceCie[p - 1]
+                        - sourceCie[p + 1]
+                        - sourceCie[p + width - 1]
+                        - sourceCie[p + width]
+                        - sourceCie[p + width + 1]
                     ;
                 }
 
-                od[p] = clamp(lightness) << 8 | (od[p] & 0xffff00ff);
+                scoreRgb[p] = clamp(lightness) << 8 | (scoreRgb[p] & 0xffff00ff);
             }
         }
     }
 
     public Score score(Crop crop) {
         Score score = new Score();
-        int[] rgb = scoreImage.data;
-        int width = scoreImage.width;
-        int height = scoreImage.height;
 
         for (int y = 0; y < crop.height; y++) {
             for (int x = 0; x < crop.width; x++) {
                 int p = (y + crop.y) * width + x + crop.x;
 
                 float importance = importance(crop, x, y);
-                float detail = (rgb[p] >> 8 & 0xff) / 255f;
-                score.skin += (rgb[p] >> 16 & 0xff) / 255f * (detail + options.getSkinBias()) * importance;
+                float detail = (scoreRgb[p] >> 8 & 0xff) / 255f;
+                score.skin += (scoreRgb[p] >> 16 & 0xff) / 255f * (detail + options.getSkinBias()) * importance;
                 score.detail += detail * importance;
-                score.saturation += (rgb[p] & 0xff) / 255f * (detail + options.getSaturationBias()) * importance;
+                score.saturation += (scoreRgb[p] & 0xff) / 255f * (detail + options.getSaturationBias()) * importance;
             }
         }
 
@@ -133,17 +125,15 @@ class Image {
         return Math.max(0, Math.min(v, 0xff));
     }
 
-    private void skinDetect(Image o) {
-        int[] od = o.data;
-        int w = width;
-        int h = height;
+    private void skinDetect() {
+        int[] od = this.scoreRgb;
         float invSkinThreshold = 255f / (1 - options.getSkinThreshold());
 
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                int p = y * w + x;
-                float lightness = cd[p] / 255f;
-                float skin = calcSkinColor(data[p]);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int p = y * width + x;
+                float lightness = sourceCie[p] / 255f;
+                float skin = calcSkinColor(sourceRgb[p]);
                 if (skin > options.getSkinThreshold() && lightness >= options.getSkinBrightnessMin() && lightness <= options.getSkinBrightnessMax()) {
                     od[p] = ((Math.round((skin - options.getSkinThreshold()) * invSkinThreshold)) & 0xff) << 16 | (od[p] & 0xff00ffff);
                 } else {
@@ -184,21 +174,18 @@ class Image {
         return Math.max(1.0f - x * x, 0);
     }
 
-    private void saturationDetect(Image o) {
-        int[] od = o.data;
-        int w = width;
-        int h = height;
+    private void saturationDetect() {
         float invSaturationThreshold = 255f / (1 - options.getSaturationThreshold());
 
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                int p = y * w + x;
-                float lightness = cd[p] / 255f;
-                float sat = saturation(data[p]);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int p = y * width + x;
+                float lightness = sourceCie[p] / 255f;
+                float sat = saturation(sourceRgb[p]);
                 if (sat > options.getSaturationThreshold() && lightness >= options.getSaturationBrightnessMin() && lightness <= options.getSaturationBrightnessMax()) {
-                    od[p] = (Math.round((sat - options.getSaturationThreshold()) * invSaturationThreshold) & 0xff) | (od[p] & 0xffffff00);
+                    this.scoreRgb[p] = (Math.round((sat - options.getSaturationThreshold()) * invSaturationThreshold) & 0xff) | (this.scoreRgb[p] & 0xffffff00);
                 } else {
-                    od[p] &= 0xffffff00;
+                    this.scoreRgb[p] &= 0xffffff00;
                 }
             }
         }
@@ -213,10 +200,11 @@ class Image {
         float rd = (r / mag - options.getSkinColor()[0]);
         float gd = (g / mag - options.getSkinColor()[1]);
         float bd = (b / mag - options.getSkinColor()[2]);
+
         return 1f - (float) Math.sqrt(rd * rd + gd * gd + bd * bd);
     }
 
-    private float saturation(int rgb) {
+    private static float saturation(int rgb) {
         float r = (rgb >> 16 & 0xff) / 255f;
         float g = (rgb >> 8 & 0xff) / 255f;
         float b = (rgb & 0xff) / 255f;
@@ -226,6 +214,7 @@ class Image {
         if (maximum == minimum) {
             return 0;
         }
+
         float l = (maximum + minimum) / 2f;
         float d = maximum - minimum;
         return l > 0.5f ? d / (2f - maximum - minimum) : d / (maximum + minimum);
