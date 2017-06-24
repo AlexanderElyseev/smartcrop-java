@@ -65,7 +65,12 @@ public class SmartCropTest {
 		bufferedImages.forEach((name, img) -> {
 			long b = System.currentTimeMillis();
 
-			CropResult result = SmartCrop.analyze(options, img);
+			CropResult result = null;
+			try {
+				result = new SmartCrop(options).analyze(img);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
 			System.out.println("done: " + name + " / analyze took " + (System.currentTimeMillis() - b) + "ms");
 			pixels.addAndGet(img.getWidth() * img.getHeight());
