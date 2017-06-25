@@ -25,7 +25,6 @@ public class Image {
 
         this.sourceCie = new int[this.sourceRgb.length];
         prepareCie();
-        
         edgeDetect();
         skinDetect();
         saturationDetect();

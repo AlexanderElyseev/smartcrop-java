@@ -5,8 +5,6 @@ import java.awt.image.BufferedImage;
 public class Options {
     public static final Options DEFAULT = new Options();
 
-    private int cropWidth = 100;
-    private int cropHeight = 100;
     private float detailWeight = .2f;
 
     private float[] skinColor = { 0.7f, 0.57f, 0.44f };
@@ -25,9 +23,13 @@ public class Options {
     private int scoreDownSample = 8;
     //	private int step = 8;
 
-    // Scaling
+    // Cropping
+    private Integer cropWidth = null;
+    private Integer cropHeight = null;
+
+    // Scanning
     private float maxInputScale = 1.0f;
-    private float minInputScale = 0.5f;
+    private float minInputScale = 0.75f;
     private float inputScaleStep = 0.05f;
     private float minCropScale = 1f;
 
@@ -37,7 +39,7 @@ public class Options {
     private boolean ruleOfThirds = false;
     private int bufferedBitmapType = BufferedImage.TYPE_INT_ARGB;
 
-    public int getCropWidth() {
+    public Integer getCropWidth() {
         return cropWidth;
     }
 
@@ -46,7 +48,7 @@ public class Options {
         return this;
     }
 
-    public int getCropHeight() {
+    public Integer getCropHeight() {
         return cropHeight;
     }
 
