@@ -1,6 +1,7 @@
 package com.github.quadflask.smartcrop;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -44,10 +45,9 @@ public class SmartCropTest {
 			new Thread(() -> {
 				try {
 					long b = System.currentTimeMillis();
-					String newName = name; // name.replace("jpg", "png");
-					ImageIO.write(cropResult.debugImage, "jpg", new File(debugPath, newName));
-					ImageIO.write(cropResult.resultImage, "jpg", new File(resultPath, newName));
-					System.out.println("saved... " + newName + " / took " + (System.currentTimeMillis() - b) + "ms");
+                    ImageIO.write(cropResult.debugImage, "jpg", new File(debugPath, name));
+					ImageIO.write(cropResult.resultImage, "jpg", new File(resultPath, name));
+					System.out.println("saved... " + name + " " + cropResult.topCrop + " " + cropResult.topScore + " / took " + (System.currentTimeMillis() - b) + "ms");
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -57,24 +57,27 @@ public class SmartCropTest {
 
 	@Test
 	public void test() throws Exception {
-		Options options = new Options().bufferedBitmapType(BufferedImage.TYPE_INT_RGB);
 		final AtomicLong pixels = new AtomicLong();
-
 		long total = System.currentTimeMillis();
 
 		bufferedImages.forEach((name, img) -> {
+            Options options = new Options().bufferedBitmapType(BufferedImage.TYPE_INT_RGB);
 			long b = System.currentTimeMillis();
 
 			CropResult result = null;
 			try {
-				result = new SmartCrop(options).analyze(img);
-			} catch (IOException e) {
+                result = new SmartCrop(options).analyze(img);
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 
 			System.out.println("done: " + name + " / analyze took " + (System.currentTimeMillis() - b) + "ms");
 			pixels.addAndGet(img.getWidth() * img.getHeight());
-			cropResults.put(name, result);
+
+			if (result != null)
+			    cropResults.put(name, result);
+			else
+                Assert.fail("Picture " + name + " hasn't analyzed with error");
 		});
 
 		System.out.println(((pixels.get() / ((System.currentTimeMillis() - total) / 1000)) / 1000 / 1000f) + " MPixels/s");
