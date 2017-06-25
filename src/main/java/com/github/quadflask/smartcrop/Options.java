@@ -26,9 +26,10 @@ public class Options {
     //	private int step = 8;
 
     // Scaling
-    private float maxScale = 1.0f;
-    private float minScale = 0.5f;
-    private float scaleStep = 0.05f;
+    private float maxInputScale = 1.0f;
+    private float minInputScale = 0.5f;
+    private float inputScaleStep = 0.05f;
+    private float minCropScale = 1f;
 
     private float edgeRadius = 0.4f;
     private float edgeWeight = -20f;
@@ -171,30 +172,39 @@ public class Options {
         return this;
     }
 
-    public float getScaleStep() {
-        return scaleStep;
+    public float getInputScaleStep() {
+        return inputScaleStep;
     }
 
-    public Options scaleStep(float scaleStep) {
-        this.scaleStep = scaleStep;
+    public Options inputScaleStep(float scaleStep) {
+        this.inputScaleStep = scaleStep;
         return this;
     }
 
-    public float getMinScale() {
-        return minScale;
+    public float getMinInputScale() {
+        return minInputScale;
     }
 
-    public Options minScale(float minScale) {
-        this.minScale = minScale;
+    public Options minInputScale(float minInputScale) {
+        this.minInputScale = minInputScale;
         return this;
     }
 
-    public float getMaxScale() {
-        return maxScale;
+    public float getMaxInputScale() {
+        return maxInputScale;
     }
 
-    public Options maxScale(float maxScale) {
-        this.maxScale = maxScale;
+    public Options maxInputScale(float maxInputScale) {
+        this.maxInputScale = maxInputScale;
+        return this;
+    }
+
+    public float getMinCropScale() {
+        return minCropScale;
+    }
+
+    public Options minCropScale(float minCropScale) {
+        this.minCropScale = minCropScale;
         return this;
     }
 

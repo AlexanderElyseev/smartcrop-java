@@ -2,7 +2,6 @@ package com.github.quadflask.smartcrop;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -22,8 +21,9 @@ public class SmartCrop {
 
     public CropResult analyze(BufferedImage input) throws IOException {
         Image inputImage = new Image(input, options);
+        CropBuilder cropBuilder = new CropBuilder(options);
 
-        Set<Crop> crops = crops(inputImage);
+        Set<Crop> crops = cropBuilder.build(inputImage);
 
         Stream<Map.Entry<Crop, Score>> results = crops
             .stream()
@@ -41,44 +41,5 @@ public class SmartCrop {
         Score topScore = first.get().getValue();
 
         return new CropResult(topCrop, topScore, crops, inputImage.getScoreImage(topCrop), inputImage.getCroppedImage(topCrop));
-    }
-
-    private Set<Crop> crops(Image input) {
-        Map<Crop, Boolean> crops = new LinkedHashMap<>();
-
-        int cw = options.getCropWidth();
-        int ch = options.getCropHeight();
-
-        int iw = input.getWidth();
-        int ih = input.getHeight();
-
-        float maxScale = options.getMaxScale();
-        float minScale = options.getMinScale();
-        float scaleStep = options.getScaleStep();
-
-        int samplesCount = options.getScoreDownSample();
-
-        for (float scale = maxScale; scale >= minScale; scale -= scaleStep) {
-            float s = cw > ch ? scale * iw / cw : scale * ih / ch;
-
-            int sw = (int) Math.ceil(cw * s);
-            int sh = (int) Math.ceil(ch * s);
-
-            int wstep = (iw - sw) / samplesCount;
-            int hstep = (ih - sh) / samplesCount;
-
-            if (wstep < 0 || hstep < 0)
-                continue;
-
-            for (int i = 0; i < samplesCount; i++) {
-                int y = i * hstep;
-                for (int j = 0; j < samplesCount; j++) {
-                    int x = j * wstep;
-                    crops.putIfAbsent(new Crop(x, y, sw, sh), true);
-                }
-            }
-        }
-
-        return crops.keySet();
     }
 }
