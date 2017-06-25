@@ -8,12 +8,14 @@ public class Options {
     private int cropWidth = 100;
     private int cropHeight = 100;
     private float detailWeight = .2f;
+
     private float[] skinColor = { 0.7f, 0.57f, 0.44f };
     private float skinBias = .01f;
     private float skinBrightnessMin = 0.2f;
     private float skinBrightnessMax = 1.0f;
     private float skinThreshold = 0.8f;
     private float skinWeight = 1.8f;
+
     private float saturationBrightnessMin = 0.05f;
     private float saturationBrightnessMax = 0.9f;
     private float saturationThreshold = 0.4f;
@@ -22,9 +24,12 @@ public class Options {
     // step * minscale rounded down to the next power of two should be good
     private int scoreDownSample = 8;
     //	private int step = 8;
-    private float scaleStep = 0.1f;
-    private float minScale = 0.8f;
+
+    // Scaling
     private float maxScale = 1.0f;
+    private float minScale = 0.5f;
+    private float scaleStep = 0.05f;
+
     private float edgeRadius = 0.4f;
     private float edgeWeight = -20f;
     private float outsideImportance = -.5f;

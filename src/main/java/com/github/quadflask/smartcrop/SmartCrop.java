@@ -2,10 +2,10 @@ package com.github.quadflask.smartcrop;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -23,7 +23,7 @@ public class SmartCrop {
     public CropResult analyze(BufferedImage input) throws IOException {
         Image inputImage = new Image(input, options);
 
-        List<Crop> crops = crops(inputImage);
+        Set<Crop> crops = crops(inputImage);
 
         Stream<Map.Entry<Crop, Score>> results = crops
             .stream()
@@ -34,50 +34,51 @@ public class SmartCrop {
             .sorted((f1, f2) -> Float.compare(f2.getValue().total, f1.getValue().total));
 
         Optional<Map.Entry<Crop, Score>> first = results.findFirst();
+        if (!first.isPresent())
+            return null;
+
         Crop topCrop = first.get().getKey();
         Score topScore = first.get().getValue();
 
-        System.out.printf("TOP (%s): %-20s\n", topCrop.toString(), topScore.toString());
-
-        return CropResult.newInstance(topCrop, crops, inputImage.getScoreImage(topCrop), inputImage.getCroppedImage(topCrop));
+        return new CropResult(topCrop, topScore, crops, inputImage.getScoreImage(topCrop), inputImage.getCroppedImage(topCrop));
     }
 
-    private List<Crop> crops(Image input) {
-        List<Crop> crops = new ArrayList<>();
+    private Set<Crop> crops(Image input) {
+        Map<Crop, Boolean> crops = new LinkedHashMap<>();
 
         int cw = options.getCropWidth();
         int ch = options.getCropHeight();
 
-        float maxScale = Math.min(
-            options.getMaxScale(),
-            cw > ch ? input.getWidth() / cw : input.getHeight() / ch);
+        int iw = input.getWidth();
+        int ih = input.getHeight();
 
+        float maxScale = options.getMaxScale();
         float minScale = options.getMinScale();
         float scaleStep = options.getScaleStep();
 
         int samplesCount = options.getScoreDownSample();
 
         for (float scale = maxScale; scale >= minScale; scale -= scaleStep) {
-            int w = (int) (cw * scale);
-            int h = (int) (ch * scale);
+            float s = cw > ch ? scale * iw / cw : scale * ih / ch;
 
-            int wstep = (input.getWidth() - w) / samplesCount;
-            int hstep = (input.getHeight() - h) / samplesCount;
+            int sw = (int) Math.ceil(cw * s);
+            int sh = (int) Math.ceil(ch * s);
+
+            int wstep = (iw - sw) / samplesCount;
+            int hstep = (ih - sh) / samplesCount;
 
             if (wstep < 0 || hstep < 0)
                 continue;
 
-            int y = 0;
-            do {
-                int x = 0;
-                do {
-                    crops.add(new Crop(x, y, w, h));
-                    x += wstep;
-                } while (x + w < input.getWidth());
-                y += hstep;
-            } while (y + h < input.getHeight());
+            for (int i = 0; i < samplesCount; i++) {
+                int y = i * hstep;
+                for (int j = 0; j < samplesCount; j++) {
+                    int x = j * wstep;
+                    crops.putIfAbsent(new Crop(x, y, sw, sh), true);
+                }
+            }
         }
 
-        return crops;
+        return crops.keySet();
     }
 }
