@@ -18,12 +18,14 @@ public class Image {
         this.options = options;
 
         this.sourceRgb = source.getRGB(0, 0, width, height, null, 0, width);
+
         this.scoreRgb = new int[this.sourceRgb.length];
-        System.arraycopy(this.sourceRgb, 0, this.scoreRgb, 0, this.sourceRgb.length);
+        for (int i = 0; i < this.scoreRgb.length; i++)
+            this.scoreRgb[i] = 0xff000000;
 
         this.sourceCie = new int[this.sourceRgb.length];
         prepareCie();
-
+        
         edgeDetect();
         skinDetect();
         saturationDetect();
@@ -108,6 +110,7 @@ public class Image {
 
                 float importance = importance(crop, x, y);
                 float detail = (scoreRgb[p] >> 8 & 0xff) / 255f;
+
                 score.skin += (scoreRgb[p] >> 16 & 0xff) / 255f * (detail + options.getSkinBias()) * importance;
                 score.detail += detail * importance;
                 score.saturation += (scoreRgb[p] & 0xff) / 255f * (detail + options.getSaturationBias()) * importance;
